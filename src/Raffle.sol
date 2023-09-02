@@ -10,9 +10,23 @@ pragma solidity 0.8.18;
  */
 
 contract Raffle {
-    uint256 private entranceFee;
+    uint256 private immutable = i_entranceFee;
 
-    function enterRaffle() public payable {}
+    constructor(uint256 entranceFee) {
+        i_entranceFee = entranceFee;
+    }
+
+    function enterRaffle() external payable {
+        require(msg.value >= i_entranceFee, "Not enough ETH sent");\
+        
+        
+    }   
 
     function pickWinner() public {}
+
+    /** Getter Functions */
+
+    function getEntranceFee() public view returns (uint256) {
+        return i_entranceFee;
+    }
 }
