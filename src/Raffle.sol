@@ -17,9 +17,18 @@ contract Raffle {
     error Raffle__NotEnoughEthSent();
     
     // State Variables
+    uint256 private constant REQUEST_CONFIRMATIONS = 3;
+    uint256 private constant NUM_WORDS = 1;
+
     uint256 private immutable = i_entranceFee;
     // @dev Duration of the lottery in seconds
     uint256 private immutable = i_interval;
+    address private immutable = i_vrfCoordinator;
+    bytes32 private immutable = i_gasLane;
+    uint64 private immutable = i_subscriptionId;
+    uint32 private immutable = i_callbackGasLimit;
+
+
     // Payable dynamic array allows us to pay out the winner
     address payable[] private s_players;
     uint256 private s_lastTimeStamp;
@@ -28,10 +37,15 @@ contract Raffle {
     event EnteredRaffle(address indexed player, uint256 indexed entranceFee);
     
 
-    constructor(uint256 entranceFee, uint256 interval) {
+    constructor(uint256 entranceFee, 
+    uint256 interval, address vrfCoordinator, bytes32 gasLane, uint64 subscriptionId, uint32 callbackGasLimit, uint8 numWords) {
         i_entranceFee = entranceFee;
         i_interval = interval;
-        s_lastTimeStamp = block.timestamp;
+        i_vrfCoordinator = vrfCoordinator;
+        i_gasLane = gasLane;
+        i_subscriptionId = subscriptionId;
+        i_callbackGasLimit = callbackGasLimit;
+        s_lastTimeStamp = block.timestamp; 
     }
 
     function enterRaffle() external payable {
@@ -52,6 +66,15 @@ contract Raffle {
         if ((block.timestamp - lastTimestamp) < i_interval) {
             revert();
         }
+        // 1. Request the RNG
+        // 2. Get the random number
+        uint256 requestId = i_vrfCoordinator.requestRandomWords(
+            keyHash, //gasLane
+            s_subscriptionId, //ID you've funded with link
+            REQUEST_CONFIRMATIONS,
+            callbackGasLimit,
+            NUM_WORDS
+        );
     }
 
     /** Getter Functions */
