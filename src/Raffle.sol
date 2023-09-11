@@ -18,6 +18,14 @@ contract Raffle is VRFConsumerBaseV2 {
      * Prefix the error with the name of the contract
      */
     error Raffle__NotEnoughEthSent();
+    error Raffle__TransferFailed();
+    error Raffle__RaffleNotOpen();
+
+    // Type Declarations
+    enum RaffleState {
+        OPEN,
+        CALCULATING
+    }
 
     // State Variables
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
@@ -34,9 +42,12 @@ contract Raffle is VRFConsumerBaseV2 {
     // Payable dynamic array allows us to pay out the winner
     address payable[] private s_players;
     uint256 private s_lastTimeStamp;
+    address private s_recentWinner;
+    RaffleState private s_raffleState;
 
     // Events
-    event EnteredRaffle(address indexed player, uint256 indexed entranceFee);
+    event EnteredRaffle(address indexed player);
+    event PickedWinner(address indexed winner);
 
     constructor(
         uint256 entranceFee,
@@ -53,12 +64,17 @@ contract Raffle is VRFConsumerBaseV2 {
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
         s_lastTimeStamp = block.timestamp;
+        s_raffleState = RaffleState.OPEN;
     }
 
     function enterRaffle() external payable {
         // require(msg.value >= i_entranceFee, "Not enough ETH sent");\
         if (msg.value < i_entranceFee) {
             revert Raffle__NotEnoughEthSent();
+        }
+        // Can only enter raffle if it is open
+        if (s_raffleState != RaffleState.OPEN) {
+            revert Raffle__RaffleNotOpen();
         }
         s_players.push(payable(msg.sender));
         emit EnteredRaffle(msg.sender, msg.value);
@@ -72,6 +88,7 @@ contract Raffle is VRFConsumerBaseV2 {
         if ((block.timestamp - s_lastTimeStamp) < i_interval) {
             revert();
         }
+        s_raffleState = RaffleState.CALCULATING;
         // 1. Request the RNG
         // 2. Get the random number
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
@@ -83,10 +100,29 @@ contract Raffle is VRFConsumerBaseV2 {
         );
     }
 
+    // DEI: Checks, Effects, and Interactions
     function fulfillRandomWords(
         uint256 requestId,
         uint256[] memory randomWords
-    ) internal override {}
+    ) internal override {
+        // Checks
+        // requires, if -> errors
+        // This is more gas efficient
+        // Effects (Our own contract)
+        uint256 indexOfWinner = randomWords[0] % s_players.length;
+        address payable winner = s_players[indexOfWinner];
+        s_recentWinner = winner;
+        s_raffleState = RaffleState.OPEN;
+        s_players = new address payable[](0);
+        s_lastTimeStamp = block.timestamp;
+        emit PickedWinner(winner);
+        // Interactions
+        (bool success, ) = winner.call{value: address(this).balance}("");
+        if (!success) {
+            revert Raffle__TransferFailed();
+        }
+        
+    }
 
     /** Getter Functions */
 
