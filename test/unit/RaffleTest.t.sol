@@ -28,14 +28,8 @@ contract RaffleTest is Test {
     function setUp() external {
         DeployRaffle deployer = new DeployRaffle();
         (raffle, helperConfig) = deployer.run();
-        (
-            entranceFee,
-            interval,
-            vrfCoordinator,
-            gasLane,
-            subscriptionId,
-            callbackGasLimit
-        ) = helperConfig.activeNetworkConfig();
+        (entranceFee, interval, vrfCoordinator, gasLane, subscriptionId, callbackGasLimit) =
+            helperConfig.activeNetworkConfig();
         vm.deal(PLAYER, STARTING_USER_BALANCE);
     }
 
@@ -66,6 +60,18 @@ contract RaffleTest is Test {
         vm.prank(PLAYER);
         vm.expectEmit(true, false, false, false, address(raffle));
         emit EnteredRaffle(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+    }
+
+    function testCantEnterWhenRaffleIsCalculating() public {
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        raffle.performUpkeep("");
+
+        vm.expectRevert(Raffle.Raffle__RaffleNotOpen.selector);
+        vm.prank(PLAYER);
         raffle.enterRaffle{value: entranceFee}();
     }
 }
