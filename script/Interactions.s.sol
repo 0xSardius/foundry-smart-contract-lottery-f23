@@ -17,9 +17,11 @@ contract CreateSubscription is Script {
     ) public returns (uint64) {
         console.log("Creating subscription on ChainId: ", block.chainid);
         vm.startBroadcast();
-        VRFCoordinatorV2Mock(vrfCoordinator).createSubscription();
+        uint64 subId = VRFCoordinatorV2Mock(vrfCoordinator).createSubscription();
         vm.stopBroadcast();
-
+        console.log("Your subId is: ", subId);
+        console.log("Please update subscriptionId in HelperConfig.s.sol")
+        return subId;
     }
 
     function run() external returns (uint64) {

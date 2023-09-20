@@ -3,6 +3,7 @@
 import {Script} from "forge-std/Script.sol";
 import {Raffle} from "../src/Raffle.sol";
 import {HelperConfig} from "./HelperConfig.s.sol";
+import {Interactions} from "./Interactions.s.sol";
 
 pragma solidity ^0.8.18;
 
