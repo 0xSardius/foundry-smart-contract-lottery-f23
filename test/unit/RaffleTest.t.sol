@@ -75,4 +75,70 @@ contract RaffleTest is Test {
         vm.prank(PLAYER);
         raffle.enterRaffle{value: entranceFee}();
     }
+
+    /////////////////////
+    // checkUpkeep //
+    /////////////////////
+    function testCheckUpkeepReturnsFalseIfItHasNoBalance() public {
+        // Arrange
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        // Act
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+
+        // Assert
+        assert(!upkeepNeeded)
+
+    }
+
+    function testCheckUpkeepReturnsFalseIfRaffleNotOpen() public {
+        // Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        raffle.performUpkeep("");
+
+        // Act
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        // Assert
+        assert(upkeepNeeded == false);
+    }
+
+    function testCheckUpkeepReturnsFalseIfEnoughTimeHasntPassed() public {
+        // Arrange
+         vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+        raffle.performUpkeep("");
+        // Act
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        // Assert
+    }
+    // testCheckUpkeepReturnsTrueWhenParametersAreGood
+
+    /////////////////////
+    // performUpkeep //
+    /////////////////////
+    function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public {
+        // Arrange
+        vm.prank(PLAYER);
+        raffle.enterRaffle{value: entranceFee}();
+        vm.warp(block.timestamp + interval + 1);
+        vm.roll(block.number + 1);
+
+        // Act / Assert
+        raffle.performUpkeep("");
+    }
+
+    function testPerformUpkeepRevertsIfCheckUpkeepIsFalse() public {
+        // Arrange
+        uint256 currentBalance = 0;
+        uint256 numPlayers = 0;
+        uint256 raffleState = 0;
+        vm.expectRevert(abi.encodeWithSelector(Raffle.Raffle__UpkeepNotNeeded.selector, currentBalance, numPlayers, raffleState));
+        raffle.performUpkeep("");
+
+    }
 }
