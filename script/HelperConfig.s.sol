@@ -39,7 +39,7 @@ contract HelperConfig is Script {
             callbackGasLimit: 500000, // 500,000 gas
             link: 0x779877A7B0D9E8603169DdbD7836e478b4624789,
             deployerKey: vm.envUint("PRIVATE_KEY")
-        });
+        }); 
     }
 
     function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory) {
