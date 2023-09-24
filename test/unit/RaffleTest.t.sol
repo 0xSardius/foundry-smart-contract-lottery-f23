@@ -7,7 +7,7 @@ import {Raffle} from "../../src/Raffle.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/tests/VRFCoordinatorV2Mock.sol";
+import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
 contract RaffleTest is Test {
     // Events
@@ -122,6 +122,14 @@ contract RaffleTest is Test {
     /////////////////////
     // performUpkeep //
     /////////////////////
+
+    modifier skupFork() {
+        if (block.chainid != 31337) {
+            return;
+        }
+        _;
+    }
+
     function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public {
         // Arrange
         vm.prank(PLAYER);
@@ -167,21 +175,27 @@ contract RaffleTest is Test {
         assert(uint256(rState) == 1);
     }
 
-    function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(uint256 randomRequestId) public raffleEnteredAndTimePassed {
+    function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(uint256 randomRequestId)
+        public
+        raffleEnteredAndTimePassed
+        skipFork
+    {
         // Arrange - Have mock fulfill random words and it should fail
         vm.expectRevert("nonexistent request");
         VRFCoordinatorV2Mock(vrfCoordinator).fulfillRandomWords(0, address(raffle));
     }
 
-    function  testFulfillRandomWordsPicksAWinnerResetsAndSendsMoney() public raffleEnteredAndTimePassed {
+    function testFulfillRandomWordsPicksAWinnerResetsAndSendsMoney() public raffleEnteredAndTimePassed {
         // Arrange
         uint256 additionalEntrants = 5;
         uint256 startingIndex = 1;
         for (uint256 i = startingIndex; i < startingIndex + additionalEntrants; i++) {
             address player = address(uint160(i));
             hoax(players, 1 ether);
-            raffle.enterRaffle{value: entranceFee}();          
+            raffle.enterRaffle{value: entranceFee}();
         }
+
+        uint256 prize = entranceFee * (additionalEntrants + 1);
 
         vm.recordLogs();
         raffle.performUpkeep("");
@@ -198,5 +212,6 @@ contract RaffleTest is Test {
         assert(raffle.getRecentWinner() != address(0));
         assert(raffle.getLengthOfPlayers() == 0);
         assert(previousTimeStamp < raffle.getLastTimeStamp());
+        assert(raffle.getRecentWinner().balance == STARTING_USER_BALANCE + prize - entranceFee);
     }
 }
